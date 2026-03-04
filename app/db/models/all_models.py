@@ -166,11 +166,11 @@ class Case(Base):
 
 class CaseParty(Base):
     __tablename__ = "case_parties"
-    __table_args__ = {"schema": "app"}
+   
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    case_id = Column(UUID(as_uuid=True), ForeignKey("app.cases.id", ondelete="CASCADE"), nullable=False, index=True)
-    party_type = Column(Enum(PartyType, name="party_type", schema="app", create_type=False), nullable=False)
+    case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    party_type = Column(Enum(PartyType, name="party_type", create_type=False), nullable=False)
     name = Column(String, nullable=False)
     father_name = Column(String)
     address = Column(String)

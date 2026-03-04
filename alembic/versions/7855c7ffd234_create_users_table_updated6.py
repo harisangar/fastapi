@@ -1,8 +1,8 @@
-"""create users table
+"""create users table updated6
 
-Revision ID: 46bf5f63e42f
+Revision ID: 7855c7ffd234
 Revises: 
-Create Date: 2026-03-04 12:38:32.269070
+Create Date: 2026-03-04 14:33:02.434002
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '46bf5f63e42f'
+revision: str = '7855c7ffd234'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -153,8 +153,17 @@ def upgrade() -> None:
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('father_name', sa.String(), nullable=True),
     sa.Column('address', sa.String(), nullable=True),
+    sa.Column('residence_address_2', sa.String(), nullable=True),
+    sa.Column('residence_address_3', sa.String(), nullable=True),
+    sa.Column('office_address_1', sa.String(), nullable=True),
+    sa.Column('office_address_2', sa.String(), nullable=True),
+    sa.Column('office_address_3', sa.String(), nullable=True),
+    sa.Column('city', sa.String(), nullable=True),
+    sa.Column('state', sa.String(), nullable=True),
+    sa.Column('postal_code', sa.String(), nullable=True),
     sa.Column('age', sa.Integer(), nullable=True),
     sa.Column('phone', sa.String(), nullable=True),
+    sa.Column('phone_2', sa.String(), nullable=True),
     sa.Column('email', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
