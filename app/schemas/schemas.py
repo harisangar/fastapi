@@ -66,12 +66,62 @@ class CaseImportResponse(BaseModel):
     total_rows: int
     success_rows: int
     failed_rows: int
+class CaseMilestoneBase(BaseModel):
+    case_id: UUID
+    milestone_type: MilestoneType
+    planned_date: Optional[date] = None
+    actual_date: Optional[date] = None
+    notes: Optional[str] = None
+class CaseMilestoneResponse(CaseMilestoneBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+class CaseArbitrationBase(BaseModel):
+    case_id: UUID
+    institution_name: Optional[str] = None
+    arbitrator_name: Optional[str] = None
+    arbitrator_phone: Optional[str] = None
+    arbitrator_email: Optional[str] = None
+    arbitrator_address: Optional[str] = None
+    acceptance_date: Optional[date] = None
+    arb_case_no: Optional[str] = None
+
+class CaseArbitrationResponse(CaseArbitrationBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+class CaseRuleStateResponse(BaseModel):
+    notice_count: int
+    closure_enabled: bool
+    closure_enabled_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 class CaseResponse(CaseBase):
     id: UUID
     created_by: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+
+
+    rules_state: Optional['CaseRuleStateResponse'] = None
+    parties: Optional[List['CasePartyResponse']] = []
+    notices: Optional[List['NoticeResponse']] = []
+    milestones: Optional[List['CaseMilestoneResponse']] = []
+    arbitration: Optional['CaseArbitrationResponse'] = None
+    meetings: Optional[List['MeetingResponse']] = []
+    recordings: Optional[List['RecordingResponse']] = []
+    documents: Optional[List['DocumentResponse']] = []
+
+    class Config:
+        from_attributes = True
 
     class Config:
         from_attributes = True
