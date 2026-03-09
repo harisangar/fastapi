@@ -15,7 +15,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",   # Vite default
         "http://127.0.0.1:5173",
-        "https://nms-live.vercel.app/",
+        "https://nms-live.vercel.app",
         "http://localhost:3000"    # If React
     ],
     allow_credentials=True,
