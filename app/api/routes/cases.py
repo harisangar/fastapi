@@ -9,7 +9,7 @@ import math
 from datetime import datetime
 
 from app.db.session import get_db
-from app.db.models.all_models import Case, User, UserRole
+from app.db.models.all_models import Case, User, UserRole,NoticeAttachment,Notice
 from app.schemas.schemas import CaseCreate, CaseResponse, CaseImportResponse
 from app.api.deps.auth import get_current_user, require_roles
 
@@ -19,8 +19,8 @@ from sqlalchemy.orm import selectinload
 
 @router.get("/", response_model=List[CaseResponse])
 async def list_cases(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -29,7 +29,10 @@ async def list_cases(
         .options(
             selectinload(Case.rules_state),
             selectinload(Case.parties),
-            selectinload(Case.notices),
+            selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
             selectinload(Case.milestones),
             selectinload(Case.arbitration),
             selectinload(Case.meetings),
@@ -41,12 +44,14 @@ async def list_cases(
         .offset(skip)
         .limit(limit)
     )
+
     if current_user.role == UserRole.advocate:
         query = query.where(Case.assigned_advocate_id == current_user.id)
-        
+
     result = await db.execute(query)
     cases = result.scalars().all()
     return cases
+
 
 def extract_val(val, target_type=str):
     if pd.isna(val):
@@ -54,24 +59,31 @@ def extract_val(val, target_type=str):
     try:
         if target_type == str:
             return str(val).strip()
+
         elif target_type == float:
             if isinstance(val, str):
-                return float(val.replace(',', '').strip())
+                return float(val.replace(",", "").strip())
             return float(val)
+
         elif target_type == int:
             if isinstance(val, str):
-                return int(val.replace(',', '').strip())
+                return int(val.replace(",", "").strip())
             return int(val)
-        elif target_type == 'date':
+
+        elif target_type == "date":
             if isinstance(val, str):
                 return pd.to_datetime(val).date()
+
             if isinstance(val, (int, float)) and val > 10000:
-                # Excel serial date
-                return pd.to_datetime(val, origin='1899-12-30', unit='D').date()
-            return val.date() if hasattr(val, 'date') else val
+                return pd.to_datetime(val, origin="1899-12-30", unit="D").date()
+
+            return val.date() if hasattr(val, "date") else val
+
     except:
         return None
+
     return None
+
 
 @router.post("/import", response_model=CaseImportResponse)
 async def import_cases(
@@ -79,17 +91,15 @@ async def import_cases(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.super_admin, UserRole.case_manager]))
 ):
+
     if not file.filename.endswith((".xls", ".xlsx")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
-    # =========================
-    # READ EXCEL
-    # =========================
     try:
         content = await file.read()
         df = pd.read_excel(BytesIO(content))
 
-        # 🔥 NORMALIZE HEADERS (THIS FIXES YOUR ISSUE)
+        # Normalize headers
         df.columns = (
             df.columns
             .str.strip()
@@ -106,17 +116,16 @@ async def import_cases(
     failed_count = 0
     total_rows = len(df)
 
-    # =========================
-    # ITERATE ROWS
-    # =========================
     for index, row in df.iterrows():
+
         try:
+
             agreement_no = extract_val(row.get("AGREEMENT NO"))
+
             if not agreement_no:
                 failed_count += 1
                 continue
 
-            # Skip duplicates
             exists = await db.execute(select(Case).where(Case.agreement_no == agreement_no))
             if exists.scalar_one_or_none():
                 failed_count += 1
@@ -164,30 +173,67 @@ async def import_cases(
             db.add(new_case)
             await db.flush()
 
-            # =========================
-            # APPLICANT
-            # =========================
+            # =====================
+            # PARTIES
+            # =====================
+
             from app.db.models.all_models import CaseParty, PartyType
 
             applicant_name = extract_val(row.get("APPLICANT NAME"))
+
             if applicant_name:
                 db.add(CaseParty(
                     case_id=new_case.id,
                     party_type=PartyType.applicant,
                     name=applicant_name,
                     father_name=extract_val(row.get("APPLICANT FATHER NAME")),
-                    address=extract_val(row.get("APPLICANT ADDRESS")),
+                    address=extract_val(row.get("RESIDENCE ADDRESS 1")),
+                    residence_address_2=extract_val(row.get("RESIDENCE ADDRESS 2")),
+                    residence_address_3=extract_val(row.get("RESIDENCE ADDRESS 3")),
+                    office_address_1=extract_val(row.get("OFFICE ADDRESS 1")),
+                    office_address_2=extract_val(row.get("OFFICE ADDRESS 2")),
+                    office_address_3=extract_val(row.get("OFFICE ADDRESS 3")),
+                    city=extract_val(row.get("CITY")),
+                    state=extract_val(row.get("STATE")),
+                    postal_code=extract_val(row.get("PIN CODE")),
                     age=extract_val(row.get("APPLICANT AGE"), int),
                     phone=extract_val(row.get("CUSTOMER PHONE 1")),
+                    phone_2=extract_val(row.get("CUSTOMER PHONE 2 / EMAIL ID")),
+                    email=extract_val(row.get("CUSTOMER PHONE 2 / EMAIL ID"))
+                    if "@" in str(row.get("CUSTOMER PHONE 2 / EMAIL ID", "")) else None
                 ))
 
-            # =========================
+            co_applicant_name = extract_val(row.get("CO-APPLICANT NAME"))
+
+            if co_applicant_name:
+                db.add(CaseParty(
+                    case_id=new_case.id,
+                    party_type=PartyType.co_applicant,
+                    name=co_applicant_name,
+                    father_name=extract_val(row.get("CO-APPLICANT FATHER NAME")),
+                    address=extract_val(row.get("CO-APPLICANT ADDRESS")),
+                ))
+
+            guarantor_name = extract_val(row.get("GUARANTOR NAME"))
+
+            if guarantor_name:
+                db.add(CaseParty(
+                    case_id=new_case.id,
+                    party_type=PartyType.guarantor,
+                    name=guarantor_name,
+                    father_name=extract_val(row.get("GUARANTOR FATHERNAME")),
+                    address=extract_val(row.get("GUARANTOR ADDRESS")),
+                ))
+
+            # =====================
             # ARBITRATION
-            # =========================
+            # =====================
+
             from app.db.models.all_models import CaseArbitration
 
             inst_name = extract_val(row.get("INSTUTION NAME"))
             arb_name = extract_val(row.get("ARBITRATOR NAME"))
+
             if inst_name or arb_name:
                 db.add(CaseArbitration(
                     case_id=new_case.id,
@@ -200,9 +246,10 @@ async def import_cases(
                     arb_case_no=extract_val(row.get("ARB CASE NO.")),
                 ))
 
-            # =========================
-            # MILESTONES (SAFE HEADERS)
-            # =========================
+            # =====================
+            # MILESTONES
+            # =====================
+
             from app.db.models.all_models import CaseMilestone, MilestoneType
 
             milestone_map = {
@@ -211,10 +258,12 @@ async def import_cases(
                 MilestoneType.THIRD_MEETING_EXPARTE: "THIRD MEETING/EX-PARTE NOTICE (DATE) (20 DAYS FROM SECOND MEETING)",
                 MilestoneType.EVIDENCE_ARGUMENT: "EVIDENCE / ARGUMENT (DATE) (20 DAYS FROM THIRD MEETING)",
                 MilestoneType.AWARD_DATE: "AWARD DATE (20 DAYS FROM EVIDENCE)",
+                MilestoneType.STAMP_PURCHASE_DATE: "STAMP PURCHASE DATE (15 DAYS BEFORE AWARD DATE)"
             }
 
             for m_type, col in milestone_map.items():
                 parsed_date = extract_val(row.get(col), "date")
+
                 if parsed_date:
                     db.add(CaseMilestone(
                         case_id=new_case.id,
@@ -223,10 +272,40 @@ async def import_cases(
                         actual_date=parsed_date,
                     ))
 
+            # =====================
+            # NOTICES
+            # =====================
+
+            from app.db.models.all_models import Notice, NoticeStatus
+            from datetime import datetime as dt_module, time, timezone
+
+            notices_to_add = [
+                (1, "A", row.get("NOTICE A /DATE OF CN")),
+                (2, "B", row.get("NOTICE B /DATE OF RN")),
+                (3, "C", row.get("NOTICE - C")),
+            ]
+
+            for n_no, n_type, n_date in notices_to_add:
+
+                parsed_date = extract_val(n_date, "date")
+
+                if parsed_date:
+
+                    dt = dt_module.combine(parsed_date, time.min).replace(tzinfo=timezone.utc)
+
+                    db.add(Notice(
+                        case_id=new_case.id,
+                        notice_no=n_no,
+                        notice_type=n_type,
+                        status=NoticeStatus.sent,
+                        created_at=dt
+                    ))
+
             await db.commit()
             success_count += 1
 
         except Exception as e:
+
             await db.rollback()
             failed_count += 1
             print(f"Row {index} failed:", e)
@@ -261,7 +340,10 @@ async def create_case(
         .options(
             selectinload(Case.rules_state),
             selectinload(Case.parties),
-            selectinload(Case.notices),
+            selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
             selectinload(Case.milestones),
             selectinload(Case.arbitration),
             selectinload(Case.meetings),
@@ -288,7 +370,10 @@ async def get_case(
         .options(
             selectinload(Case.rules_state),
             selectinload(Case.parties),
-            selectinload(Case.notices),
+            selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
             selectinload(Case.milestones),
             selectinload(Case.arbitration),
             selectinload(Case.meetings),
@@ -334,7 +419,10 @@ async def update_case(
         .options(
             selectinload(Case.rules_state),
             selectinload(Case.parties),
-            selectinload(Case.notices),
+            selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
             selectinload(Case.milestones),
             selectinload(Case.arbitration),
             selectinload(Case.meetings),
@@ -388,7 +476,10 @@ async def assign_advocate(
         .options(
             selectinload(Case.rules_state),
             selectinload(Case.parties),
-            selectinload(Case.notices),
+            selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
             selectinload(Case.milestones),
             selectinload(Case.arbitration),
             selectinload(Case.meetings),
@@ -410,7 +501,10 @@ async def close_case(
     query = select(Case).where(Case.id == case_id).options(
         selectinload(Case.rules_state),
         selectinload(Case.parties),
-        selectinload(Case.notices),
+        selectinload(Case.notices).options(
+    selectinload(Notice.attachments).selectinload(NoticeAttachment.document),
+    selectinload(Notice.deliveries)
+),
         selectinload(Case.milestones),
         selectinload(Case.arbitration),
         selectinload(Case.meetings),

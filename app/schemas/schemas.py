@@ -1,3 +1,285 @@
+# from pydantic import BaseModel, EmailStr, Field
+# from typing import Optional, List, Any
+# from datetime import datetime, date
+# from uuid import UUID
+# from app.db.models.all_models import UserRole, UserStatus, PartyType, NoticeStatus, DeliveryChannel, DeliveryStatus, MeetingStatus, MeetProvider, DocSource, DocCategory, MilestoneType, ImportStatus, ImportRowStatus, ActorType
+
+# # --- Auth & Users ---
+# class UserBase(BaseModel):
+#     username: str
+#     email: EmailStr
+#     phone: Optional[str] = None
+#     role: UserRole
+#     designation: Optional[str] = None
+#     department: Optional[str] = None
+#     status: Optional[UserStatus] = UserStatus.active
+#     employee_id: Optional[str] = None
+
+# class UserCreate(UserBase):
+#     password: str
+
+# class UserResponse(UserBase):
+#     id: UUID
+#     created_at: datetime
+#     updated_at: datetime
+#     last_login_at: Optional[datetime] = None
+
+#     class Config:
+#         from_attributes = True
+
+# class Token(BaseModel):
+#     access_token: str
+#     token_type: str
+
+# class UserLogin(BaseModel):
+#     email: EmailStr
+#     password: str
+
+# # --- Case Core ---
+# class CaseBase(BaseModel):
+#     case_code: str
+#     ref_no: Optional[str] = None
+#     mode: Optional[str] = None
+#     agreement_no: Optional[str] = None
+#     agreement_date: Optional[date] = None
+#     status: Optional[str] = "NEW"
+#     assigned_advocate_id: Optional[UUID] = None
+#     allocated_at: Optional[date] = None
+#     claim_amount: Optional[float] = None
+#     claim_date: Optional[date] = None
+#     amount_financed: Optional[float] = None
+#     finance_charge: Optional[float] = None
+#     agreement_value: Optional[float] = None
+#     award_amount: Optional[float] = None
+#     award_amount_words: Optional[str] = None
+#     make: Optional[str] = None
+#     model: Optional[str] = None
+#     engine_no: Optional[str] = None
+#     chassis_no: Optional[str] = None
+#     reg_no: Optional[str] = None
+
+# class CaseCreate(CaseBase):
+#     pass
+
+# class CaseImportResponse(BaseModel):
+#     message: str
+#     total_rows: int
+#     success_rows: int
+#     failed_rows: int
+# class CaseMilestoneBase(BaseModel):
+#     case_id: UUID
+#     milestone_type: MilestoneType
+#     planned_date: Optional[date] = None
+#     actual_date: Optional[date] = None
+#     notes: Optional[str] = None
+# class CaseMilestoneResponse(CaseMilestoneBase):
+#     id: UUID
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+# class CaseArbitrationBase(BaseModel):
+#     case_id: UUID
+#     institution_name: Optional[str] = None
+#     arbitrator_name: Optional[str] = None
+#     arbitrator_phone: Optional[str] = None
+#     arbitrator_email: Optional[str] = None
+#     arbitrator_address: Optional[str] = None
+#     acceptance_date: Optional[date] = None
+#     arb_case_no: Optional[str] = None
+
+# class CaseArbitrationResponse(CaseArbitrationBase):
+#     id: UUID
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+# class CaseRuleStateResponse(BaseModel):
+#     notice_count: int
+#     closure_enabled: bool
+#     closure_enabled_at: Optional[datetime] = None
+
+#     class Config:
+#         from_attributes = True
+
+# class CaseResponse(CaseBase):
+#     id: UUID
+#     created_by: Optional[UUID] = None
+#     created_at: datetime
+#     updated_at: datetime
+
+
+#     rules_state: Optional['CaseRuleStateResponse'] = None
+#     parties: Optional[List['CasePartyResponse']] = []
+#     notices: Optional[List['NoticeResponse']] = []
+#     milestones: Optional[List['CaseMilestoneResponse']] = []
+#     arbitration: Optional['CaseArbitrationResponse'] = None
+#     meetings: Optional[List['MeetingResponse']] = []
+#     recordings: Optional[List['RecordingResponse']] = []
+#     documents: Optional[List['DocumentResponse']] = []
+
+#     class Config:
+#         from_attributes = True
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Parties ---
+# class CasePartyBase(BaseModel):
+#     case_id: UUID
+#     party_type: PartyType
+#     name: str
+#     father_name: Optional[str] = None
+#     address: Optional[str] = None
+#     age: Optional[int] = None
+#     phone: Optional[str] = None
+#     email: Optional[str] = None
+
+# class CasePartyCreate(CasePartyBase):
+#     pass
+
+# class CasePartyResponse(CasePartyBase):
+#     id: UUID
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Notices ---
+# class NoticeBase(BaseModel):
+#     case_id: UUID
+#     notice_no: int
+#     notice_type: Optional[str] = None
+#     content: Optional[dict] = None
+#     status: Optional[NoticeStatus] = NoticeStatus.draft
+
+# class NoticeCreate(NoticeBase):
+#     pass
+
+# class NoticeUpdate(BaseModel):
+#     notice_type: Optional[str] = None
+#     content: Optional[dict] = None
+#     status: Optional[NoticeStatus] = None
+
+# class NoticeResponse(NoticeBase):
+#     id: UUID
+#     created_by: Optional[UUID] = None
+#     created_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Meetings ---
+# class MeetingBase(BaseModel):
+#     case_id: UUID
+#     scheduled_at: datetime
+#     meet_provider: Optional[MeetProvider] = MeetProvider.google_meet
+#     meet_url: Optional[str] = None
+#     portal_url: Optional[str] = None
+#     status: Optional[MeetingStatus] = MeetingStatus.scheduled
+#     notes: Optional[str] = None
+
+# class MeetingCreate(MeetingBase):
+#     pass
+
+# class MeetingUpdate(BaseModel):
+#     scheduled_at: Optional[datetime] = None
+#     meet_provider: Optional[MeetProvider] = None
+#     meet_url: Optional[str] = None
+#     portal_url: Optional[str] = None
+#     status: Optional[MeetingStatus] = None
+#     notes: Optional[str] = None
+
+# class MeetingResponse(MeetingBase):
+#     id: UUID
+#     created_by: Optional[UUID] = None
+#     created_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Recordings ---
+# class RecordingBase(BaseModel):
+#     meeting_id: Optional[UUID] = None
+#     case_id: UUID
+#     storage_key: str
+#     file_name: str
+#     mime_type: Optional[str] = None
+#     size_bytes: Optional[int] = None
+#     checksum_sha256: Optional[str] = None
+#     is_downloadable_internal: Optional[bool] = True
+
+# class RecordingCreate(RecordingBase):
+#     pass
+
+# class RecordingResponse(RecordingBase):
+#     id: UUID
+#     uploaded_by: Optional[UUID] = None
+#     uploaded_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Documents ---
+# class DocumentBase(BaseModel):
+#     case_id: UUID
+#     source: DocSource
+#     category: Optional[DocCategory] = DocCategory.OTHER
+#     file_name: str
+#     mime_type: Optional[str] = None
+#     size_bytes: Optional[int] = None
+#     storage_key: str
+#     checksum_sha256: Optional[str] = None
+
+# class DocumentCreate(DocumentBase):
+#     uploaded_by_user_id: Optional[UUID] = None
+#     uploaded_by_victim_id: Optional[UUID] = None
+
+# class DocumentResponse(DocumentBase):
+#     id: UUID
+#     uploaded_by_user_id: Optional[UUID] = None
+#     uploaded_by_victim_id: Optional[UUID] = None
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+# # --- Audit Logs ---
+# class AuditLogBase(BaseModel):
+#     actor_type: ActorType
+#     actor_user_id: Optional[UUID] = None
+#     actor_victim_id: Optional[UUID] = None
+#     action: str
+#     entity_type: str
+#     entity_id: UUID
+#     before: Optional[dict] = None
+#     after: Optional[dict] = None
+#     ip_address: Optional[str] = None
+#     user_agent: Optional[str] = None
+
+# class AuditLogCreate(AuditLogBase):
+#     pass
+
+# class AuditLogResponse(AuditLogBase):
+#     id: UUID
+#     created_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+
+
+
+
+
+
+
+
+
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Any
 from datetime import datetime, date
@@ -27,13 +309,21 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
 
 # --- Case Core ---
 class CaseBase(BaseModel):
@@ -58,20 +348,35 @@ class CaseBase(BaseModel):
     chassis_no: Optional[str] = None
     reg_no: Optional[str] = None
 
+    first_emi_date: Optional[date] = None
+    last_emi_date: Optional[date] = None
+    tenure: Optional[int] = None
+    sec_17_applied: Optional[str] = None
+    sec_17_applied_date: Optional[date] = None
+    sec_17_received_date: Optional[date] = None
+    zone: Optional[str] = None
+    region: Optional[str] = None
+    branch_code: Optional[str] = None
+    branch_name: Optional[str] = None
+    product: Optional[str] = None
+    repossession_status: Optional[str] = None
+    dpd: Optional[str] = None
+    allocation_pos: Optional[str] = None
+
+
 class CaseCreate(CaseBase):
     pass
 
-class CaseImportResponse(BaseModel):
-    message: str
-    total_rows: int
-    success_rows: int
-    failed_rows: int
+
+# --- Milestones & Arbitration ---
 class CaseMilestoneBase(BaseModel):
     case_id: UUID
     milestone_type: MilestoneType
     planned_date: Optional[date] = None
     actual_date: Optional[date] = None
     notes: Optional[str] = None
+
+
 class CaseMilestoneResponse(CaseMilestoneBase):
     id: UUID
     created_at: datetime
@@ -79,6 +384,8 @@ class CaseMilestoneResponse(CaseMilestoneBase):
 
     class Config:
         from_attributes = True
+
+
 class CaseArbitrationBase(BaseModel):
     case_id: UUID
     institution_name: Optional[str] = None
@@ -89,6 +396,7 @@ class CaseArbitrationBase(BaseModel):
     acceptance_date: Optional[date] = None
     arb_case_no: Optional[str] = None
 
+
 class CaseArbitrationResponse(CaseArbitrationBase):
     id: UUID
     created_at: datetime
@@ -96,6 +404,15 @@ class CaseArbitrationResponse(CaseArbitrationBase):
 
     class Config:
         from_attributes = True
+
+
+class CaseImportResponse(BaseModel):
+    message: str
+    total_rows: int
+    success_rows: int
+    failed_rows: int
+
+
 class CaseRuleStateResponse(BaseModel):
     notice_count: int
     closure_enabled: bool
@@ -104,27 +421,25 @@ class CaseRuleStateResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CaseResponse(CaseBase):
     id: UUID
     created_by: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 
-
     rules_state: Optional['CaseRuleStateResponse'] = None
-    parties: Optional[List['CasePartyResponse']] = []
-    notices: Optional[List['NoticeResponse']] = []
-    milestones: Optional[List['CaseMilestoneResponse']] = []
+    parties: List['CasePartyResponse'] = Field(default_factory=list)
+    notices: List['NoticeResponse'] = Field(default_factory=list)
+    milestones: List['CaseMilestoneResponse'] = Field(default_factory=list)
     arbitration: Optional['CaseArbitrationResponse'] = None
-    meetings: Optional[List['MeetingResponse']] = []
-    recordings: Optional[List['RecordingResponse']] = []
-    documents: Optional[List['DocumentResponse']] = []
+    meetings: List['MeetingResponse'] = Field(default_factory=list)
+    recordings: List['RecordingResponse'] = Field(default_factory=list)
+    documents: List['DocumentResponse'] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
 
-    class Config:
-        from_attributes = True
 
 # --- Parties ---
 class CasePartyBase(BaseModel):
@@ -133,12 +448,23 @@ class CasePartyBase(BaseModel):
     name: str
     father_name: Optional[str] = None
     address: Optional[str] = None
+    residence_address_2: Optional[str] = None
+    residence_address_3: Optional[str] = None
+    office_address_1: Optional[str] = None
+    office_address_2: Optional[str] = None
+    office_address_3: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
     age: Optional[int] = None
     phone: Optional[str] = None
+    phone_2: Optional[str] = None
     email: Optional[str] = None
+
 
 class CasePartyCreate(CasePartyBase):
     pass
+
 
 class CasePartyResponse(CasePartyBase):
     id: UUID
@@ -148,6 +474,7 @@ class CasePartyResponse(CasePartyBase):
     class Config:
         from_attributes = True
 
+
 # --- Notices ---
 class NoticeBase(BaseModel):
     case_id: UUID
@@ -156,21 +483,54 @@ class NoticeBase(BaseModel):
     content: Optional[dict] = None
     status: Optional[NoticeStatus] = NoticeStatus.draft
 
+
 class NoticeCreate(NoticeBase):
-    pass
+    delivery_channels: List[DeliveryChannel] = Field(default_factory=lambda: [DeliveryChannel.sms])
+    include_portal_link: bool = False
+    include_meeting_link: bool = False
+    attachment_ids: Optional[List[UUID]] = None
+
 
 class NoticeUpdate(BaseModel):
     notice_type: Optional[str] = None
     content: Optional[dict] = None
     status: Optional[NoticeStatus] = None
 
+
+class NoticeDeliveryResponse(BaseModel):
+    id: UUID
+    channel: DeliveryChannel
+    to_address: Optional[str] = None
+    status: DeliveryStatus
+    sent_at: Optional[datetime] = None
+    provider_message_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NoticeAttachmentResponse(BaseModel):
+    id: UUID
+    notice_id: UUID
+    document_id: UUID
+    created_at: datetime
+    document: 'DocumentResponse'
+
+    class Config:
+        from_attributes = True
+
+
 class NoticeResponse(NoticeBase):
     id: UUID
     created_by: Optional[UUID] = None
     created_at: datetime
+    case_code: Optional[str] = None
+    attachments: List['NoticeAttachmentResponse'] = Field(default_factory=list)
+    deliveries: List[NoticeDeliveryResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
+
 
 # --- Meetings ---
 class MeetingBase(BaseModel):
@@ -182,8 +542,10 @@ class MeetingBase(BaseModel):
     status: Optional[MeetingStatus] = MeetingStatus.scheduled
     notes: Optional[str] = None
 
+
 class MeetingCreate(MeetingBase):
     pass
+
 
 class MeetingUpdate(BaseModel):
     scheduled_at: Optional[datetime] = None
@@ -193,13 +555,16 @@ class MeetingUpdate(BaseModel):
     status: Optional[MeetingStatus] = None
     notes: Optional[str] = None
 
+
 class MeetingResponse(MeetingBase):
     id: UUID
     created_by: Optional[UUID] = None
     created_at: datetime
+    case_code: Optional[str] = None
 
     class Config:
         from_attributes = True
+
 
 # --- Recordings ---
 class RecordingBase(BaseModel):
@@ -212,16 +577,20 @@ class RecordingBase(BaseModel):
     checksum_sha256: Optional[str] = None
     is_downloadable_internal: Optional[bool] = True
 
+
 class RecordingCreate(RecordingBase):
     pass
+
 
 class RecordingResponse(RecordingBase):
     id: UUID
     uploaded_by: Optional[UUID] = None
     uploaded_at: datetime
+    case_code: Optional[str] = None
 
     class Config:
         from_attributes = True
+
 
 # --- Documents ---
 class DocumentBase(BaseModel):
@@ -234,9 +603,11 @@ class DocumentBase(BaseModel):
     storage_key: str
     checksum_sha256: Optional[str] = None
 
+
 class DocumentCreate(DocumentBase):
     uploaded_by_user_id: Optional[UUID] = None
     uploaded_by_victim_id: Optional[UUID] = None
+
 
 class DocumentResponse(DocumentBase):
     id: UUID
@@ -244,9 +615,11 @@ class DocumentResponse(DocumentBase):
     uploaded_by_victim_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+    case_code: Optional[str] = None
 
     class Config:
         from_attributes = True
+
 
 # --- Audit Logs ---
 class AuditLogBase(BaseModel):
@@ -261,8 +634,10 @@ class AuditLogBase(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
 
+
 class AuditLogCreate(AuditLogBase):
     pass
+
 
 class AuditLogResponse(AuditLogBase):
     id: UUID

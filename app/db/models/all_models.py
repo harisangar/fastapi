@@ -166,11 +166,11 @@ class Case(Base):
 
 class CaseParty(Base):
     __tablename__ = "case_parties"
-   
+    # __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
-    party_type = Column(Enum(PartyType, name="party_type", create_type=False), nullable=False)
+    party_type = Column(Enum(PartyType, name="party_type",  create_type=False), nullable=False)
     name = Column(String, nullable=False)
     father_name = Column(String)
     address = Column(String)
@@ -191,6 +191,7 @@ class CaseParty(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     case = relationship("Case", back_populates="parties")
+
 class CaseArbitration(Base):
     __tablename__ = "case_arbitration"
     # __table_args__ = {"schema": "app"}
@@ -241,6 +242,7 @@ class Notice(Base):
 
     case = relationship("Case", back_populates="notices")
     deliveries = relationship("NoticeDelivery", back_populates="notice", cascade="all, delete-orphan")
+    attachments = relationship("NoticeAttachment", back_populates="notice", cascade="all, delete-orphan")
 
 class NoticeDelivery(Base):
     __tablename__ = "notice_deliveries"
@@ -406,3 +408,14 @@ class CaseImportRow(Base):
     status = Column(Enum(ImportRowStatus, name="import_row_status", create_type=False), nullable=False)
     error = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+class NoticeAttachment(Base):
+    __tablename__ = "notice_attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notice_id = Column(UUID(as_uuid=True), ForeignKey("notices.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    notice = relationship("Notice", back_populates="attachments")
+    document = relationship("Document")
