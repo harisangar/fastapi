@@ -169,7 +169,7 @@ class NoticeService:
             notice_type=notice_in.notice_type,
             content=notice_content,
             created_by=current_user_id,
-            status="sent"
+            status="Draft"
         )
         db.add(notice)
         await db.flush()
