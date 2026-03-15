@@ -1,13 +1,17 @@
+from io import BytesIO
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List
+import os
 
 from app.db.session import get_db
 from app.db.models.all_models import Document, User, UserRole
 from app.schemas.schemas import DocumentCreate, DocumentResponse
 from app.api.deps.auth import get_current_user, require_roles
+from fastapi.responses import FileResponse
 
 router = APIRouter(
     prefix="/documents",
@@ -76,7 +80,16 @@ async def upload_internal_document(
     case_res = await db.execute(select(Case).filter(Case.id == case_id))
     if not case_res.scalars().first():
         raise HTTPException(status_code=404, detail="Case not found")
+    UPLOAD_DIR = "internal_docs"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+    # create unique filename
+    unique_name = f"{uuid.uuid4()}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
     document = Document(
         case_id=case_id,
         uploaded_by_user_id=current_user.id,
@@ -85,7 +98,7 @@ async def upload_internal_document(
         file_name=file.filename,
         mime_type=file.content_type,
         size_bytes=file.size or 100000,
-        storage_key=f"internal_docs/{uuid.uuid4()}_{file.filename}"
+        storage_key=file_path
     )
     db.add(document)
     await db.flush()
@@ -104,6 +117,25 @@ async def upload_internal_document(
     await db.refresh(document)
     return document
 
+
+# @router.get("/{document_id}/download")
+# async def download_document(
+#     document_id: str,
+#     db: AsyncSession = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     result = await db.execute(select(Document).filter(Document.id == document_id))
+#     document = result.scalars().first()
+    
+#     if not document:
+#         raise HTTPException(status_code=404, detail="Document not found")
+    
+#     return FileResponse(
+#         path=document.storage_key,        # full path to PDF file
+#         media_type=document.mime_type,    # e.g., "application/pdf"
+#         filename=document.file_name
+#     )
+
 @router.get("/{document_id}/download")
 async def download_document(
     document_id: str,
@@ -112,15 +144,16 @@ async def download_document(
 ):
     res = await db.execute(select(Document).filter(Document.id == document_id))
     document = res.scalars().first()
+
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Mock streaming the file
-    def iterfile():
-        yield b"mock document content for " + document.file_name.encode()
+    if not os.path.exists(document.storage_key):
+        raise HTTPException(status_code=404, detail="File not found on server")
 
-    headers = {
-        "Content-Disposition": f'attachment; filename="{document.file_name}"'
-    }
-    return StreamingResponse(iterfile(), media_type=document.mime_type or "application/octet-stream", headers=headers)
-
+    return FileResponse(
+        path=document.storage_key,
+        media_type=document.mime_type,
+        filename=document.file_name,
+        headers={"Content-Disposition": f'inline; filename="{document.file_name}"'}
+    )

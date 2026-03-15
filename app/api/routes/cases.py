@@ -524,7 +524,7 @@ async def close_case(
     case.status = "CLOSED"
     
     # Audit log
-    from models import AuditLog, ActorType
+    from app.db.models.all_models import AuditLog, ActorType
     audit = AuditLog(
         actor_type=ActorType.internal,
         actor_user_id=current_user.id,
