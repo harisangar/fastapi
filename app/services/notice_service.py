@@ -135,7 +135,7 @@ class NoticeService:
         
         if notice_in.include_portal_link:
             portal_token = str(uuid.uuid4())
-            portal_link = f"http://localhost:5173/portal/{portal_token}"
+            portal_link = f"https://nms-india-mcov.vercel.app/portal/{portal_token}"
             notice_content.update({
                 "portal_token": portal_token,
                 "portal_link": portal_link
@@ -143,7 +143,7 @@ class NoticeService:
 
         if notice_in.include_meeting_link:
             meeting_id = uuid.uuid4()
-            meeting_url = f"http://localhost:5173/meeting/{meeting_id}"
+            meeting_url = f"https://nms-india-mcov.vercel.app/meeting/{meeting_id}"
             notice_content.update({
                 "meeting_id": str(meeting_id),
                 "meeting_url": meeting_url
