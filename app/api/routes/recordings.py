@@ -10,6 +10,10 @@ from app.db.session import get_db
 from app.db.models.all_models import Recording, User, UserRole, Case, AuditLog, ActorType
 from app.schemas.schemas import RecordingCreate, RecordingResponse
 from app.api.deps.auth import get_current_user, require_roles
+import os
+
+UPLOAD_DIR = "uploads/recordings"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter(
     prefix="/recordings",
@@ -45,6 +49,18 @@ async def upload_recording(
     case_res = await db.execute(select(Case).filter(Case.id == case_id))
     if not case_res.scalars().first():
         raise HTTPException(status_code=404, detail="Case not found")
+    
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    # ✅ Save file to disk
+    file_size = 0
+    with open(file_path, "wb") as buffer:
+        while chunk := await file.read(1024 * 1024):  # read in chunks (1MB)
+            file_size += len(chunk)
+            buffer.write(chunk)
 
     recording = Recording(
         case_id=case_id,
