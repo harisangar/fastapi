@@ -45,35 +45,41 @@ async def upload_recording(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Verify case access
+    # ✅ Verify case
     case_res = await db.execute(select(Case).filter(Case.id == case_id))
     if not case_res.scalars().first():
         raise HTTPException(status_code=404, detail="Case not found")
-    
+
+    # ✅ Generate ONE filename
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_extension}"
 
+    # ✅ Build ONE path
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
-    # ✅ Save file to disk
+    # ✅ Save file
     file_size = 0
     with open(file_path, "wb") as buffer:
-        while chunk := await file.read(1024 * 1024):  # read in chunks (1MB)
+        while chunk := await file.read(1024 * 1024):
             file_size += len(chunk)
             buffer.write(chunk)
 
+    # ✅ Store SAME path in DB
+    file_path = file_path.replace("\\", "/")
     recording = Recording(
         case_id=case_id,
         meeting_id=meeting_id if meeting_id else None,
-        storage_key=f"recordings/{uuid.uuid4()}_{file.filename}",
+        storage_key=file_path,  # 🔥 FIXED (same as saved file)
         file_name=file.filename,
         mime_type=file.content_type,
-        size_bytes=file.size or 1000000, # Mock size if missing
+        size_bytes=file_size,  # 🔥 FIXED (real size)
         uploaded_by=current_user.id
     )
+
     db.add(recording)
     await db.flush()
 
+    # ✅ Audit log
     audit = AuditLog(
         actor_type=ActorType.internal,
         actor_user_id=current_user.id,
@@ -86,6 +92,7 @@ async def upload_recording(
 
     await db.commit()
     await db.refresh(recording)
+
     return recording
 
 @router.get("/{recording_id}/download")
@@ -96,17 +103,31 @@ async def download_recording(
 ):
     res = await db.execute(select(Recording).filter(Recording.id == recording_id))
     recording = res.scalars().first()
+
     if not recording:
         raise HTTPException(status_code=404, detail="Recording not found")
 
-    # Mock streaming the file
+    file_path = f"{recording.storage_key}"  # ✅ actual path
+
+    # ✅ Check file exists
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+
+    # ✅ Stream real file
     def iterfile():
-        yield b"mock video content for " + recording.file_name.encode()
+        with open(file_path, "rb") as file:
+            while chunk := file.read(1024 * 1024):  # 1MB chunks
+                yield chunk
 
     headers = {
         "Content-Disposition": f'attachment; filename="{recording.file_name}"'
     }
-    return StreamingResponse(iterfile(), media_type=recording.mime_type or "application/octet-stream", headers=headers)
+
+    return StreamingResponse(
+        iterfile(),
+        media_type=recording.mime_type or "application/octet-stream",
+        headers=headers
+    )
 
 @router.get("/{recording_id}", response_model=RecordingResponse)
 async def get_recording(
